@@ -1,5 +1,6 @@
 mod app;
 mod event;
+mod song;
 mod ui;
 
 use std::io;
@@ -54,8 +55,12 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                     app.quit();
                 }
 
-                Event::Key(KeyCode::Char('i')) => {
-                    app.increment();
+                Event::Key(KeyCode::Up) => {
+                    app.select_previous();
+                }
+
+                Event::Key(KeyCode::Down) => {
+                    app.select_next();
                 }
 
                 Event::Key(_) => {}
