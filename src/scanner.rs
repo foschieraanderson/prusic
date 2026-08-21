@@ -5,7 +5,7 @@ use std::{
 
 use lofty::{file::TaggedFileExt, read_from_path, tag::Accessor};
 
-use crate::song::Song;
+use crate::song::{Cover, Song};
 
 pub fn scan_directory(path: &Path) -> io::Result<Vec<PathBuf>> {
     let mut files = Vec::new();
@@ -62,6 +62,18 @@ fn load_metadata(path: &Path) -> Song {
 
     if let Some(album) = tag.album() {
         song.album = album.to_string();
+    }
+
+    if let Some(picture) = tag.pictures().first() {
+        let mime_type = picture
+            .mime_type()
+            .map(|mime| mime.to_string())
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+
+        song.cover = Some(Cover {
+            mime_type,
+            data: picture.data().to_vec(),
+        });
     }
 
     song

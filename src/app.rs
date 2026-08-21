@@ -30,6 +30,9 @@ impl App {
             self.selected -= 1;
         }
     }
+    pub fn selected_song(&self) -> Option<&Song> {
+        self.songs.get(self.selected)
+    }
     pub fn quit(&mut self) {
         self.running = false;
     }

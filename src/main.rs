@@ -1,4 +1,5 @@
 mod app;
+mod cover;
 mod event;
 mod scanner;
 mod song;
@@ -48,6 +49,9 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
     }
 
     let songs = scanner::scan_songs(&music_dir)?;
+
+    // teste
+    // fim teste
 
     let mut app = App::new(songs);
 

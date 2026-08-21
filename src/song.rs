@@ -1,11 +1,16 @@
 use std::path::PathBuf;
 
+pub struct Cover {
+    pub mime_type: String,
+    pub data: Vec<u8>,
+}
+
 pub struct Song {
     pub title: String,
     pub artist: String,
     pub album: String,
     pub path: PathBuf,
-    pub cover: Option<Vec<u8>>,
+    pub cover: Option<Cover>,
 }
 
 impl Song {

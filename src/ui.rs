@@ -2,6 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
     style::{Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
@@ -17,8 +18,24 @@ pub fn render(frame: &mut Frame, app: &App) {
         ])
         .split(frame.area());
 
+    let content = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(36), Constraint::Min(0)])
+        .split(layout[1]);
+
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(6)])
+        .split(content[1]);
+
     render_header(frame, layout[0]);
-    render_library(frame, layout[1], app);
+
+    render_cover(frame, content[0], app);
+
+    render_library(frame, right[0], app);
+
+    //render_song_info(frame, right[1], app);
+
     render_footer(frame, layout[2]);
 }
 
@@ -59,4 +76,41 @@ fn render_footer(frame: &mut Frame, area: ratatui::layout::Rect) {
         Paragraph::new("↑↓ Navigate    q Quit").block(Block::default().borders(Borders::ALL));
 
     frame.render_widget(footer, area);
+}
+
+fn render_cover(frame: &mut Frame, area: ratatui::layout::Rect, app: &App) {
+    let Some(song) = app.selected_song() else {
+        return;
+    };
+
+    let Some(cover) = &song.cover else {
+        let paragraph = Paragraph::new("No cover")
+            .block(Block::default().title(" Album Art ").borders(Borders::ALL));
+
+        frame.render_widget(paragraph, area);
+
+        return;
+    };
+
+    let Ok(image) = crate::cover::decode(&cover.data) else {
+        let paragraph = Paragraph::new("Invalid cover")
+            .block(Block::default().title(" Album Art ").borders(Borders::ALL));
+
+        frame.render_widget(paragraph, area);
+
+        return;
+    };
+
+    let width = area.width.saturating_sub(2) as u32;
+
+    let height = area.height.saturating_sub(2) as u32 * 2;
+
+    let lines = crate::cover::to_ascii(&image, width, height);
+
+    let lines = lines.into_iter().map(Line::from).collect::<Vec<_>>();
+
+    let paragraph =
+        Paragraph::new(lines).block(Block::default().title(" Album Art ").borders(Borders::ALL));
+
+    frame.render_widget(paragraph, area);
 }
