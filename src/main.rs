@@ -39,7 +39,7 @@ fn main() -> io::Result<()> {
 fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
     let home = env::var("HOME").map_err(io::Error::other)?;
 
-    let music_dir = PathBuf::from(home).join("Music").join("Alternative");
+    let music_dir = PathBuf::from(home).join("Music");
     if !music_dir.is_dir() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,

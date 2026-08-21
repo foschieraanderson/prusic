@@ -5,6 +5,7 @@ pub struct Song {
     pub artist: String,
     pub album: String,
     pub path: PathBuf,
+    pub cover: Option<Vec<u8>>,
 }
 
 impl Song {
@@ -20,6 +21,7 @@ impl Song {
             artist: "Unknown artist".to_string(),
             album: "Unknown album".to_string(),
             path,
+            cover: None,
         }
     }
 }
