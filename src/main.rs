@@ -1,9 +1,10 @@
 mod app;
 mod event;
+mod scanner;
 mod song;
 mod ui;
 
-use std::io;
+use std::{env, io, path::PathBuf};
 
 use crossterm::{
     event::{Event as CrosstermEvent, KeyCode},
@@ -36,7 +37,19 @@ fn main() -> io::Result<()> {
 }
 
 fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
-    let mut app = App::new();
+    let home = env::var("HOME").map_err(io::Error::other)?;
+
+    let music_dir = PathBuf::from(home).join("Music").join("Alternative");
+    if !music_dir.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Music directory not found: {}", music_dir.display()),
+        ));
+    }
+
+    let songs = scanner::scan_songs(&music_dir)?;
+
+    let mut app = App::new(songs);
 
     while app.running {
         terminal.draw(|frame| {
