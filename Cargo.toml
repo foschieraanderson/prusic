@@ -5,6 +5,12 @@ edition = "2024"
 
 [dependencies]
 crossterm = "0.29.0"
-image = "0.25.10"
-lofty = "0.25.1"
+rand = "0.10.2"
 ratatui = "0.30.2"
+rodio = { 
+    version = "0.22.2",
+    features = [
+        "playback",
+        "symphonia-all"
+    ]
+}
