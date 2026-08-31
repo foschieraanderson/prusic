@@ -1,0 +1,11 @@
+player:
+  volume: 0.5
+  shuffle: true
+  repeat: false
+
+spectrum:
+  enabled: false
+
+appearance:
+  color: green
+  show_cover: true
