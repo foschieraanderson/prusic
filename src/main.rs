@@ -1,3 +1,4 @@
+use base64::{Engine, engine::general_purpose::STANDARD};
 use id3::{Tag, TagLike};
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use std::{
@@ -19,6 +20,7 @@ struct Track {
     artist: String,
     album: String,
     year: Option<i32>,
+    cover: Option<Vec<u8>>,
 }
 
 impl Track {
@@ -40,12 +42,15 @@ impl Track {
         let album = tag.album().unwrap_or("Unknown").to_string();
         let year = tag.year();
 
+        let cover = tag.pictures().next().map(|picture| picture.data.clone());
+
         Ok(Self {
             path,
             title,
             artist,
             album,
             year,
+            cover,
         })
     }
 }
@@ -310,6 +315,28 @@ fn print_help() {
     println!();
 }
 
+fn show_image(data: &[u8]) -> io::Result<()> {
+    let encoded = STANDARD.encode(data);
+
+    const CHUNK_SIZE: usize = 4096;
+
+    for (i, chunk) in encoded.as_bytes().chunks(CHUNK_SIZE).enumerate() {
+        let more = if i + 1 < encoded.len().div_ceil(CHUNK_SIZE) {
+            1
+        } else {
+            0
+        };
+
+        let chunk = std::str::from_utf8(chunk).unwrap();
+
+        print!("\x1b_Ga=T,f=100,t=d,m={};{}\x1b\\", more, chunk);
+    }
+
+    io::stdout().flush()?;
+
+    Ok(())
+}
+
 // ============================================================
 // MAIN
 // ============================================================
@@ -378,6 +405,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!();
 
         if let Some(track) = playlist.current() {
+            // COVER
+            if let Some(cover) = &track.cover {
+                show_image(&cover)?;
+                println!();
+            }
+
             println!("Faixa: {}", track.title);
             // if let Some(year) = track.year {
             //     println!(
