@@ -1,3 +1,4 @@
+use id3::{Tag, TagLike};
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use std::{
     env,
@@ -15,17 +16,37 @@ use std::{
 struct Track {
     path: PathBuf,
     title: String,
+    artist: String,
+    album: String,
+    year: Option<i32>,
 }
 
 impl Track {
-    fn new(path: PathBuf) -> Self {
-        let title = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("Unknown")
-            .to_string();
+    fn new(path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let tag = Tag::read_from_path(&path)?;
 
-        Self { path, title }
+        let title = tag
+            .title()
+            .filter(|title| !title.trim().is_empty())
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string()
+            });
+
+        let artist = tag.artist().unwrap_or("Unknown").to_string();
+        let album = tag.album().unwrap_or("Unknown").to_string();
+        let year = tag.year();
+
+        Ok(Self {
+            path,
+            title,
+            artist,
+            album,
+            year,
+        })
     }
 }
 
@@ -39,19 +60,21 @@ struct Playlist {
 }
 
 impl Playlist {
-    fn from_directory(path: &Path) -> io::Result<Self> {
+    fn from_directory(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         if !path.exists() {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("Diretório não encontrado: {}", path.display()),
-            ));
+            )
+            .into());
         }
 
         if !path.is_dir() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!("O caminho não é um diretório: {}", path.display()),
-            ));
+            )
+            .into());
         }
 
         let mut tracks = Vec::new();
@@ -65,7 +88,10 @@ impl Playlist {
             }
 
             if is_audio_file(&path) {
-                tracks.push(Track::new(path));
+                match Track::new(path) {
+                    Ok(track) => tracks.push(track),
+                    Err(e) => eprintln!("Erro ao carregar música: {e}"),
+                }
             }
         }
 
@@ -353,6 +379,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(track) = playlist.current() {
             println!("Faixa: {}", track.title);
+            // if let Some(year) = track.year {
+            //     println!(
+            //         "Artista: {} | Álbum: {} ({})",
+            //         track.artist, track.album, year
+            //     );
+            // } else {
+            //     println!("Artista: {} | Álbum: {}", track.artist, track.album);
+            // }
+
+            let year = track
+                .year
+                .map(|year| format!(" ({year})"))
+                .unwrap_or_default();
+
+            println!("Artista: {} | Álbum: {}{}", track.artist, track.album, year);
         }
 
         let status = if player.is_paused() {
