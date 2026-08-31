@@ -1,10 +1,11 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use id3::{Tag, TagLike};
+use image::ImageFormat;
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use std::{
     env,
     fs::{self, File},
-    io::{self, Write},
+    io::{self, Cursor, Write},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -315,24 +316,51 @@ fn print_help() {
     println!();
 }
 
+fn jpeg_to_png(data: &[u8]) -> io::Result<Vec<u8>> {
+    let image =
+        image::load_from_memory(data).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    let mut png = Cursor::new(Vec::new());
+
+    image
+        .write_to(&mut png, ImageFormat::Png)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    Ok(png.into_inner())
+}
+
 fn show_image(data: &[u8]) -> io::Result<()> {
-    let encoded = STANDARD.encode(data);
+    let png = jpeg_to_png(data)?;
+    let encoded = STANDARD.encode(&png);
 
     const CHUNK_SIZE: usize = 4096;
 
-    for (i, chunk) in encoded.as_bytes().chunks(CHUNK_SIZE).enumerate() {
-        let more = if i + 1 < encoded.len().div_ceil(CHUNK_SIZE) {
-            1
+    let chunks: Vec<&[u8]> = encoded.as_bytes().chunks(CHUNK_SIZE).collect();
+
+    let mut stdout = io::stdout();
+
+    for (i, chunk) in chunks.iter().enumerate() {
+        let more = if i + 1 < chunks.len() { 1 } else { 0 };
+
+        let chunk = std::str::from_utf8(chunk)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        let kitty = format!("\x1b_Ga=T,f=100,t=d,m={};{}\x1b\\", more, chunk);
+
+        if std::env::var_os("TMUX").is_some() {
+            // tmux passthrough:
+            // ESC P tmux ; <payload> ESC \
+            //
+            // Os ESC internos precisam ser duplicados.
+            let payload = kitty.replace('\x1b', "\x1b\x1b");
+
+            write!(stdout, "\x1bPtmux;{}\x1b\\", payload)?;
         } else {
-            0
-        };
-
-        let chunk = std::str::from_utf8(chunk).unwrap();
-
-        print!("\x1b_Ga=T,f=100,t=d,m={};{}\x1b\\", more, chunk);
+            write!(stdout, "{}", kitty)?;
+        }
     }
 
-    io::stdout().flush()?;
+    stdout.flush()?;
 
     Ok(())
 }
