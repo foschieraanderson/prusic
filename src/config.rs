@@ -67,7 +67,6 @@ impl Default for AppearanceConfig {
 
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     let path = Path::new("config.yaml");
-    println!("Path: {}", path.display());
 
     if !path.exists() {
         return Ok(Config::default());
@@ -75,8 +74,6 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
 
     let content = fs::read_to_string(path)?;
     let config: Config = serde_yaml::from_str(&content)?;
-
-    println!("{:#?}", config);
 
     Ok(config)
 }
