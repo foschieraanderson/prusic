@@ -58,11 +58,22 @@ fn render_title(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_artist(frame: &mut Frame, area: Rect, app: &App) {
-    let artist = Paragraph::new(Line::from(Span::styled(
+    let year = app
+        .current_track
+        .as_ref()
+        .unwrap()
+        .year
+        .clone()
+        .map(|year| format!(" / {year}"))
+        .unwrap_or_default();
+    let text = format!(
+        "{} ({}{})",
         app.current_track.as_ref().unwrap().artist.clone(),
-        Style::default().fg(MUTED),
-    )))
-    .alignment(Alignment::Center);
+        app.current_track.as_ref().unwrap().album.clone(),
+        year
+    );
+    let artist = Paragraph::new(Line::from(Span::styled(text, Style::default().fg(MUTED))))
+        .alignment(Alignment::Center);
 
     frame.render_widget(artist, area);
 }
@@ -85,7 +96,7 @@ impl Widget for PlayerProgress {
         let elapsed_width = self.elapsed.len() as u16;
         let duration_width = self.duration.len() as u16;
 
-        let start = elapsed_width + 2;
+        let start = elapsed_width + 4;
 
         let end = area.width.saturating_sub(duration_width + 2);
 
@@ -94,17 +105,19 @@ impl Widget for PlayerProgress {
         }
 
         let width = end - start;
-
         let progress = self.progress.clamp(0.0, 1.0);
-
         let position = ((width.saturating_sub(1)) as f64 * progress).round() as u16;
 
         // Coordenadas absolutas do widget
         let x = area.x;
         let y = area.y;
 
+        // Play/Pause
+        let play_icon = if self.playing { " " } else { " " }; // |> ⤨ ▶ ❚❚||↻ ●   󰏤     󰁗  󰁐  󱦰 󱦱 󰈆
+        buf.set_string(x, y, play_icon, Style::default().fg(MUTED));
+
         // Tempo atual
-        buf.set_string(x, y, &self.elapsed, Style::default().fg(MUTED));
+        buf.set_string(x + 2, y, &self.elapsed, Style::default().fg(MUTED));
 
         // Barra de progresso
         for offset in 0..width {
@@ -122,9 +135,6 @@ impl Widget for PlayerProgress {
         buf.set_string(x + end + 2, y, &self.duration, Style::default().fg(MUTED));
 
         // Controls
-        let play_icon = if self.playing { " " } else { " " }; // |> ⤨ ▶ ❚❚||↻ ●   󰏤     󰁗  󰁐  󱦰 󱦱 󰈆
-        buf.set_string(x + end + 8, y, play_icon, Style::default().fg(MUTED));
-
         let mut cursor = x + end + 8;
 
         let draw_icon = |buf: &mut Buffer, icon: &str, cursor: &mut u16| {
@@ -132,8 +142,6 @@ impl Widget for PlayerProgress {
 
             *cursor += icon.chars().count() as u16 + 1;
         };
-
-        draw_icon(buf, if self.playing { "" } else { "" }, &mut cursor);
 
         if self.shuffle {
             draw_icon(buf, " ", &mut cursor);
@@ -150,15 +158,6 @@ impl Widget for PlayerProgress {
                 draw_icon(buf, " ", &mut cursor);
             }
         }
-
-        // let shuffle_icon = if self.shuffle { " " } else { "" };
-        // let repeat_icon = match self.repeat {
-        //     RepeatMode::Off => "",
-        //     RepeatMode::One => " ¹",
-        //     RepeatMode::All => " ",
-        // };
-        // buf.set_string(x + end + 10, y, repeat_icon, Style::default().fg(MUTED));
-        // buf.set_string(x + end + 13, y, shuffle_icon, Style::default().fg(MUTED));
     }
 }
 
