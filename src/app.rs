@@ -1,11 +1,15 @@
-use crate::track::Track;
-use std::time::Duration;
+use crate::{
+    player::AudioPlayer,
+    playlist::{Playlist, RepeatMode},
+    track::Track,
+};
+use std::time::{Duration, Instant};
 
 pub struct App {
     pub duration: Duration,
     pub elapsed: Duration,
     pub playing: bool,
-    pub repeat: bool,
+    pub repeat: RepeatMode,
     pub shuffle: bool,
     pub current_track: Option<Track>,
 }
@@ -16,7 +20,7 @@ impl App {
             duration: Duration::from_secs(0),
             elapsed: Duration::from_secs(0),
             playing: false,
-            repeat: false,
+            repeat: RepeatMode::Off,
             shuffle: false,
             current_track: None,
         }
@@ -58,5 +62,32 @@ impl App {
         self.duration = Duration::from_secs(0);
         self.playing = false;
         self.current_track = None;
+    }
+
+    pub fn play_current_track(
+        &mut self,
+        playlist: &Playlist,
+        player: &mut AudioPlayer,
+        last_tick: &mut Instant,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let Some(track) = playlist.current() else {
+            return Ok(());
+        };
+
+        let path = track.path.clone();
+
+        player.play_file(&path)?;
+
+        self.reset();
+        *last_tick = Instant::now();
+
+        if let Some(duration) = player.duration() {
+            self.duration = duration;
+        }
+
+        self.playing = true;
+        self.current_track = Some(track.clone());
+
+        Ok(())
     }
 }
