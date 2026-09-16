@@ -158,24 +158,13 @@ fn run(
 
     app.current_track = playlist.current().cloned();
 
-    // println!("{} arquivo(s) encontrado(s).", playlist.len());
-
     let mut player = AudioPlayer::new()?;
 
     // --------------------------------------------------------
     // Primeira música
     // --------------------------------------------------------
 
-    if let Some(track) = playlist.current() {
-        let path = track.path.clone();
-
-        player.play_file(&path)?;
-        app.playing = true;
-
-        if let Some(duration) = player.current_duration {
-            app.duration = duration;
-        }
-    }
+    app.play_current_track(&playlist, &mut player, &mut last_tick)?;
 
     let mut cover_changed = true;
     let mut cover_area = Rect::default();
@@ -190,63 +179,82 @@ fn run(
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
+                    // ------------------------------------------------
+                    // Sair
+                    // ------------------------------------------------
                     KeyCode::Char('q') => {
                         player.stop();
                         break;
                     }
 
+                    // ------------------------------------------------
+                    // Play / Pause
+                    // ------------------------------------------------
                     KeyCode::Char('p') => {
                         app.playing = !app.playing;
                         player.toggle_pause();
                     }
 
-                    // KeyCode::Left => {
-                    //     app.seek(-5);
-                    // }
-                    //
-                    // KeyCode::Right => {
-                    //     app.seek(5);
-                    // }
+                    // ------------------------------------------------
+                    // Stop
+                    // ------------------------------------------------
                     KeyCode::Char('s') => {
                         player.stop();
+                        app.playing = false;
                     }
+
+                    // ------------------------------------------------
+                    // Próxima
+                    // ------------------------------------------------
                     KeyCode::Char('n') => {
-                        if let Some(track) = playlist.next() {
-                            app.reset();
-                            last_tick = Instant::now();
-                            let path = track.path.clone();
+                        if playlist.next().is_some() {
+                            app.play_current_track(&playlist, &mut player, &mut last_tick)?;
 
-                            player.play_file(&path)?;
-
-                            if let Some(duration) = player.current_duration {
-                                app.duration = duration;
-                            }
-                            app.playing = true;
-                            app.current_track = Some(track.clone());
                             cover_changed = true;
                         }
                     }
+
+                    // ------------------------------------------------
+                    // Anterior
+                    // ------------------------------------------------
                     KeyCode::Char('b') => {
-                        if let Some(track) = playlist.previous() {
-                            app.reset();
-                            last_tick = Instant::now();
-                            let path = track.path.clone();
+                        if playlist.previous().is_some() {
+                            app.play_current_track(&playlist, &mut player, &mut last_tick)?;
 
-                            player.play_file(&path)?;
-                            if let Some(duration) = player.current_duration {
-                                app.duration = duration;
-                            }
-                            app.playing = true;
-                            app.current_track = Some(track.clone());
                             cover_changed = true;
                         }
                     }
+
+                    // ------------------------------------------------
+                    // Shuffle
+                    // ------------------------------------------------
+                    KeyCode::Char('z') => {
+                        playlist.toggle_shuffle();
+                        app.shuffle = playlist.shuffle;
+                    }
+
+                    // ------------------------------------------------
+                    // Repeat
+                    // ------------------------------------------------
+                    KeyCode::Char('r') => {
+                        playlist.toggle_repeat();
+                        app.repeat = playlist.repeat;
+                    }
+
+                    // ------------------------------------------------
+                    // Volume
+                    // ------------------------------------------------
                     KeyCode::Char('+') => {
                         player.increase_volume();
                     }
+
                     KeyCode::Char('-') => {
                         player.decrease_volume();
                     }
+
+                    // ------------------------------------------------
+                    // Help
+                    // ------------------------------------------------
                     KeyCode::Char('h') => {
                         print_help();
                     }
@@ -256,6 +264,10 @@ fn run(
             }
         }
 
+        // --------------------------------------------------------
+        // Tick
+        // --------------------------------------------------------
+
         if last_tick.elapsed() >= tick_rate {
             let delta = last_tick.elapsed();
 
@@ -263,22 +275,24 @@ fn run(
 
             last_tick = Instant::now();
         }
-        if app.elapsed >= app.duration {
-            if let Some(track) = playlist.next() {
-                app.reset();
-                last_tick = Instant::now();
-                let path = track.path.clone();
 
-                player.play_file(&path)?;
+        // --------------------------------------------------------
+        // Música terminou
+        // --------------------------------------------------------
 
-                if let Some(duration) = player.current_duration {
-                    app.duration = duration;
-                }
-                app.playing = true;
-                app.current_track = Some(track.clone());
+        if player.has_finished() {
+            if playlist.next().is_some() {
+                app.play_current_track(&playlist, &mut player, &mut last_tick)?;
+
                 cover_changed = true;
+            } else {
+                app.playing = false;
             }
         }
+
+        // --------------------------------------------------------
+        // Atualiza capa
+        // --------------------------------------------------------
 
         if cover_changed {
             if let Some(track) = &app.current_track {
@@ -293,6 +307,163 @@ fn run(
 
     Ok(())
 }
+// fn run(
+//     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+//     music_directory: PathBuf,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     let mut app = App::new();
+//
+//     let tick_rate = Duration::from_millis(50);
+//     let mut last_tick = Instant::now();
+//
+//     let mut playlist = Playlist::from_directory(&music_directory)?;
+//
+//     if playlist.len() == 0 {
+//         println!(
+//             "Nenhum arquivo de áudio encontrado em {}",
+//             music_directory.display()
+//         );
+//
+//         return Ok(());
+//     }
+//
+//     app.current_track = playlist.current().cloned();
+//
+//     // println!("{} arquivo(s) encontrado(s).", playlist.len());
+//
+//     let mut player = AudioPlayer::new()?;
+//
+//     // --------------------------------------------------------
+//     // Primeira música
+//     // --------------------------------------------------------
+//
+//     if let Some(track) = playlist.current() {
+//         let path = track.path.clone();
+//
+//         player.play_file(&path)?;
+//         app.playing = true;
+//
+//         if let Some(duration) = player.current_duration {
+//             app.duration = duration;
+//         }
+//     }
+//
+//     let mut cover_changed = true;
+//     let mut cover_area = Rect::default();
+//
+//     loop {
+//         terminal.draw(|frame| {
+//             cover_area = render(frame, &app);
+//         })?;
+//
+//         let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+//
+//         if event::poll(timeout)? {
+//             if let Event::Key(key) = event::read()? {
+//                 match key.code {
+//                     KeyCode::Char('q') => {
+//                         player.stop();
+//                         break;
+//                     }
+//
+//                     KeyCode::Char('p') => {
+//                         app.playing = !app.playing;
+//                         player.toggle_pause();
+//                     }
+//
+//                     // KeyCode::Left => {
+//                     //     app.seek(-5);
+//                     // }
+//                     //
+//                     // KeyCode::Right => {
+//                     //     app.seek(5);
+//                     // }
+//                     KeyCode::Char('s') => {
+//                         player.stop();
+//                     }
+//                     KeyCode::Char('n') => {
+//                         if let Some(track) = playlist.next() {
+//                             app.reset();
+//                             last_tick = Instant::now();
+//                             let path = track.path.clone();
+//
+//                             player.play_file(&path)?;
+//
+//                             if let Some(duration) = player.current_duration {
+//                                 app.duration = duration;
+//                             }
+//                             app.playing = true;
+//                             app.current_track = Some(track.clone());
+//                             cover_changed = true;
+//                         }
+//                     }
+//                     KeyCode::Char('b') => {
+//                         if let Some(track) = playlist.previous() {
+//                             app.reset();
+//                             last_tick = Instant::now();
+//                             let path = track.path.clone();
+//
+//                             player.play_file(&path)?;
+//                             if let Some(duration) = player.current_duration {
+//                                 app.duration = duration;
+//                             }
+//                             app.playing = true;
+//                             app.current_track = Some(track.clone());
+//                             cover_changed = true;
+//                         }
+//                     }
+//                     KeyCode::Char('+') => {
+//                         player.increase_volume();
+//                     }
+//                     KeyCode::Char('-') => {
+//                         player.decrease_volume();
+//                     }
+//                     KeyCode::Char('h') => {
+//                         print_help();
+//                     }
+//
+//                     _ => {}
+//                 }
+//             }
+//         }
+//
+//         if last_tick.elapsed() >= tick_rate {
+//             let delta = last_tick.elapsed();
+//
+//             app.tick(delta);
+//
+//             last_tick = Instant::now();
+//         }
+//         if app.elapsed >= app.duration {
+//             if let Some(track) = playlist.next() {
+//                 app.reset();
+//                 last_tick = Instant::now();
+//                 let path = track.path.clone();
+//
+//                 player.play_file(&path)?;
+//
+//                 if let Some(duration) = player.current_duration {
+//                     app.duration = duration;
+//                 }
+//                 app.playing = true;
+//                 app.current_track = Some(track.clone());
+//                 cover_changed = true;
+//             }
+//         }
+//
+//         if cover_changed {
+//             if let Some(track) = &app.current_track {
+//                 if let Some(cover) = &track.cover {
+//                     show_image(cover, cover_area)?;
+//                 }
+//             }
+//
+//             cover_changed = false;
+//         }
+//     }
+//
+//     Ok(())
+// }
 
 fn render(frame: &mut Frame, app: &App) -> Rect {
     let area = frame.area();
