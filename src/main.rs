@@ -41,12 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("  {program} <diretorio-de-musicas>");
         eprintln!();
         eprintln!("Exemplo:");
-        eprintln!("  {program} /home/user/Music");
+        eprintln!("  {program} Music/");
 
         return Ok(());
     };
 
     let music_directory = PathBuf::from(music_directory);
+    let mut relative_path: PathBuf = dirs::home_dir().expect("Não foi possível encontrar a home");
+    relative_path.push(&music_directory);
 
     let mut stdout = io::stdout();
 
@@ -55,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let result = run(&mut terminal, music_directory);
+    let result = run(&mut terminal, relative_path);
 
     disable_raw_mode()?;
 
