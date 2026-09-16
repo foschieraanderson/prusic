@@ -32,7 +32,6 @@ use ratatui::{
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
 
-    // ==========================
     let mut args = env::args();
 
     let program = args.next().unwrap_or_else(|| "audio-player".to_string());
@@ -87,13 +86,7 @@ fn run(
         return Ok(());
     }
 
-    app.current_track = playlist.current().cloned();
-
     let mut player = AudioPlayer::new()?;
-
-    // --------------------------------------------------------
-    // Primeira música
-    // --------------------------------------------------------
 
     app.play_current_track(&playlist, &mut player, &mut last_tick)?;
 
