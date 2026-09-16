@@ -1,13 +1,25 @@
 use crate::track::Track;
+use rand::seq::SliceRandom;
 use std::{
     fs::{self},
     io::{self},
     path::Path,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepeatMode {
+    Off,
+    One,
+    All,
+}
+
 pub struct Playlist {
     pub tracks: Vec<Track>,
     pub current: usize,
+    pub shuffle: bool,
+    pub repeat: RepeatMode,
+    shuffle_queue: Vec<usize>,
+    shuffle_history: Vec<usize>,
 }
 
 impl Playlist {
@@ -48,7 +60,14 @@ impl Playlist {
 
         tracks.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
 
-        Ok(Self { tracks, current: 0 })
+        Ok(Self {
+            tracks,
+            current: 0,
+            shuffle: false,
+            repeat: RepeatMode::Off,
+            shuffle_queue: Vec::new(),
+            shuffle_history: Vec::new(),
+        })
     }
 
     pub fn current(&self) -> Option<&Track> {
@@ -60,9 +79,32 @@ impl Playlist {
             return None;
         }
 
-        self.current = (self.current + 1) % self.tracks.len();
+        // Repetir a mesma música.
+        if self.repeat == RepeatMode::One {
+            return self.current();
+        }
 
-        self.current()
+        if self.shuffle {
+            return self.next_shuffle();
+        }
+
+        // Reprodução normal.
+        if self.current + 1 < self.tracks.len() {
+            self.current += 1;
+            return self.current();
+        }
+
+        // Chegou ao final.
+        match self.repeat {
+            RepeatMode::All => {
+                self.current = 0;
+                self.current()
+            }
+
+            RepeatMode::Off => None,
+
+            RepeatMode::One => unreachable!(),
+        }
     }
 
     pub fn previous(&mut self) -> Option<&Track> {
@@ -70,13 +112,89 @@ impl Playlist {
             return None;
         }
 
+        if self.shuffle {
+            return self.previous_shuffle();
+        }
+
         if self.current == 0 {
-            self.current = self.tracks.len() - 1;
+            if self.repeat == RepeatMode::All {
+                self.current = self.tracks.len() - 1;
+            } else {
+                return None;
+            }
         } else {
             self.current -= 1;
         }
 
         self.current()
+    }
+
+    fn next_shuffle(&mut self) -> Option<&Track> {
+        if self.shuffle_queue.is_empty() {
+            match self.repeat {
+                RepeatMode::All => {
+                    self.create_shuffle_queue();
+                }
+
+                RepeatMode::Off => {
+                    return None;
+                }
+
+                RepeatMode::One => {
+                    return self.current();
+                }
+            }
+        }
+
+        let next = self.shuffle_queue.pop()?;
+
+        // Guarda a música atual no histórico.
+        self.shuffle_history.push(self.current);
+
+        self.current = next;
+
+        self.current()
+    }
+
+    fn previous_shuffle(&mut self) -> Option<&Track> {
+        let previous = self.shuffle_history.pop()?;
+
+        // A música atual volta para a fila.
+        self.shuffle_queue.push(self.current);
+
+        self.current = previous;
+
+        self.current()
+    }
+
+    fn create_shuffle_queue(&mut self) {
+        self.shuffle_queue = (0..self.tracks.len())
+            .filter(|&index| index != self.current)
+            .collect();
+
+        let mut rng = rand::rng();
+
+        self.shuffle_queue.shuffle(&mut rng);
+    }
+
+    pub fn toggle_shuffle(&mut self) {
+        self.shuffle = !self.shuffle;
+
+        if self.shuffle {
+            self.create_shuffle_queue();
+            self.shuffle_history.clear();
+        } else {
+            self.shuffle_queue.clear();
+            self.shuffle_history.clear();
+        }
+    }
+
+    pub fn toggle_repeat(&mut self) {
+        self.repeat = match self.repeat {
+            RepeatMode::Off => RepeatMode::One,
+            RepeatMode::One => RepeatMode::All,
+            RepeatMode::All => RepeatMode::Off,
+        };
     }
 
     pub fn len(&self) -> usize {
