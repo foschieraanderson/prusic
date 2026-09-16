@@ -49,75 +49,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let music_directory = PathBuf::from(music_directory);
 
-    // --------------------------------------------------------
-    // Event loop
-    // --------------------------------------------------------
-
-    // loop {
-    //     println!();
-    //
-    //     if let Some(track) = playlist.current() {
-    //         // COVER
-    //         // if let Some(cover) = &track.cover {
-    //         //     show_image(&cover)?;
-    //         //     println!();
-    //         // }
-    //
-    //         println!("Faixa: {}", track.title);
-    //         // if let Some(year) = track.year {
-    //         //     println!(
-    //         //         "Artista: {} | Álbum: {} ({})",
-    //         //         track.artist, track.album, year
-    //         //     );
-    //         // } else {
-    //         //     println!("Artista: {} | Álbum: {}", track.artist, track.album);
-    //         // }
-    //
-    //         let year = track
-    //             .year
-    //             .map(|year| format!(" ({year})"))
-    //             .unwrap_or_default();
-    //
-    //         println!("Artista: {} | Álbum: {}{}", track.artist, track.album, year);
-    //     }
-
-    // let status = if player.is_paused() {
-    //     "Pausado"
-    // } else if player.is_empty() {
-    //     "Parado"
-    // } else {
-    //     "Reproduzindo"
-    // };
-    //
-    // println!("Estado: {status}");
-    //
-    // println!("Volume: {:.0}%", player.volume() * 100.0);
-    //
-    // draw_progress(&player);
-    //
-    // print!("Comando: ");
-    // io::stdout().flush()?;
-    //
-    // let mut input = String::new();
-    //
-    // io::stdin().read_line(&mut input)?;
-
-    // ----------------------------------------------------
-    // Auto next
-    // ----------------------------------------------------
-
-    // if player.is_empty() && !player.is_paused() {
-    //     if let Some(track) = playlist.next() {
-    //         let path = track.path.clone();
-    //
-    //         println!("Próxima automaticamente: {}", track.title);
-    //
-    //         player.play_file(&path)?;
-    //     }
-    // }
-    // }
-
-    // ===============================================
     let mut stdout = io::stdout();
 
     execute!(stdout, EnterAlternateScreen)?;
@@ -179,17 +110,11 @@ fn run(
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    // ------------------------------------------------
-                    // Sair
-                    // ------------------------------------------------
                     KeyCode::Char('q') => {
                         player.stop();
                         break;
                     }
 
-                    // ------------------------------------------------
-                    // Play / Pause
-                    // ------------------------------------------------
                     KeyCode::Char('p') => {
                         app.playing = !app.playing;
                         player.toggle_pause();
@@ -198,14 +123,10 @@ fn run(
                     // ------------------------------------------------
                     // Stop
                     // ------------------------------------------------
-                    KeyCode::Char('s') => {
-                        player.stop();
-                        app.playing = false;
-                    }
-
-                    // ------------------------------------------------
-                    // Próxima
-                    // ------------------------------------------------
+                    // KeyCode::Char('s') => {
+                    //     player.stop();
+                    //     app.playing = false;
+                    // }
                     KeyCode::Char('n') => {
                         if playlist.next().is_some() {
                             app.play_current_track(&playlist, &mut player, &mut last_tick)?;
@@ -214,9 +135,6 @@ fn run(
                         }
                     }
 
-                    // ------------------------------------------------
-                    // Anterior
-                    // ------------------------------------------------
                     KeyCode::Char('b') => {
                         if playlist.previous().is_some() {
                             app.play_current_track(&playlist, &mut player, &mut last_tick)?;
@@ -225,25 +143,16 @@ fn run(
                         }
                     }
 
-                    // ------------------------------------------------
-                    // Shuffle
-                    // ------------------------------------------------
                     KeyCode::Char('z') => {
                         playlist.toggle_shuffle();
                         app.shuffle = playlist.shuffle;
                     }
 
-                    // ------------------------------------------------
-                    // Repeat
-                    // ------------------------------------------------
                     KeyCode::Char('r') => {
                         playlist.toggle_repeat();
                         app.repeat = playlist.repeat;
                     }
 
-                    // ------------------------------------------------
-                    // Volume
-                    // ------------------------------------------------
                     KeyCode::Char('+') => {
                         player.increase_volume();
                     }
@@ -252,9 +161,6 @@ fn run(
                         player.decrease_volume();
                     }
 
-                    // ------------------------------------------------
-                    // Help
-                    // ------------------------------------------------
                     KeyCode::Char('h') => {
                         print_help();
                     }
@@ -264,10 +170,6 @@ fn run(
             }
         }
 
-        // --------------------------------------------------------
-        // Tick
-        // --------------------------------------------------------
-
         if last_tick.elapsed() >= tick_rate {
             let delta = last_tick.elapsed();
 
@@ -275,10 +177,6 @@ fn run(
 
             last_tick = Instant::now();
         }
-
-        // --------------------------------------------------------
-        // Música terminou
-        // --------------------------------------------------------
 
         if player.has_finished() {
             if playlist.next().is_some() {
@@ -289,10 +187,6 @@ fn run(
                 app.playing = false;
             }
         }
-
-        // --------------------------------------------------------
-        // Atualiza capa
-        // --------------------------------------------------------
 
         if cover_changed {
             if let Some(track) = &app.current_track {
