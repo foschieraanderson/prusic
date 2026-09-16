@@ -8,6 +8,7 @@ pub struct AudioPlayer {
 
     volume: f32,
     pub current_duration: Option<Duration>,
+    playing_track: bool,
 }
 
 impl AudioPlayer {
@@ -22,6 +23,7 @@ impl AudioPlayer {
 
             volume: 0.5,
             current_duration: None,
+            playing_track: false,
         })
     }
 
@@ -40,6 +42,7 @@ impl AudioPlayer {
 
         self.player.append(source);
         self.player.play();
+        self.playing_track = true;
 
         Ok(())
     }
@@ -63,6 +66,11 @@ impl AudioPlayer {
     pub fn stop(&mut self) {
         self.player.stop();
         self.current_duration = None;
+        self.playing_track = false;
+    }
+
+    pub fn has_finished(&self) -> bool {
+        self.playing_track && !self.player.is_paused() && self.player.empty()
     }
 
     pub fn increase_volume(&mut self) {
