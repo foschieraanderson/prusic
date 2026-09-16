@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::App;
+use crate::{App, playlist::RepeatMode};
 use ratatui::{
     Frame,
     buffer::Buffer,
@@ -72,6 +72,8 @@ struct PlayerProgress {
     elapsed: String,
     duration: String,
     playing: bool,
+    repeat: RepeatMode,
+    shuffle: bool,
 }
 
 impl Widget for PlayerProgress {
@@ -121,7 +123,42 @@ impl Widget for PlayerProgress {
 
         // Controls
         let play_icon = if self.playing { " " } else { " " }; // |> ⤨ ▶ ❚❚||↻ ●   󰏤     󰁗  󰁐  󱦰 󱦱 󰈆
-        buf.set_string(x + end + 10, y, play_icon, Style::default().fg(MUTED));
+        buf.set_string(x + end + 8, y, play_icon, Style::default().fg(MUTED));
+
+        let mut cursor = x + end + 8;
+
+        let draw_icon = |buf: &mut Buffer, icon: &str, cursor: &mut u16| {
+            buf.set_string(*cursor, y, icon, Style::default().fg(MUTED));
+
+            *cursor += icon.chars().count() as u16 + 1;
+        };
+
+        draw_icon(buf, if self.playing { "" } else { "" }, &mut cursor);
+
+        if self.shuffle {
+            draw_icon(buf, " ", &mut cursor);
+        }
+
+        match self.repeat {
+            RepeatMode::Off => {}
+
+            RepeatMode::One => {
+                draw_icon(buf, " ¹", &mut cursor);
+            }
+
+            RepeatMode::All => {
+                draw_icon(buf, " ", &mut cursor);
+            }
+        }
+
+        // let shuffle_icon = if self.shuffle { " " } else { "" };
+        // let repeat_icon = match self.repeat {
+        //     RepeatMode::Off => "",
+        //     RepeatMode::One => " ¹",
+        //     RepeatMode::All => " ",
+        // };
+        // buf.set_string(x + end + 10, y, repeat_icon, Style::default().fg(MUTED));
+        // buf.set_string(x + end + 13, y, shuffle_icon, Style::default().fg(MUTED));
     }
 }
 
@@ -135,6 +172,8 @@ fn render_progress(frame: &mut Frame, area: Rect, app: &App) {
         elapsed: format_duration(app.elapsed),
         duration: format_duration(app.duration),
         playing: app.playing,
+        repeat: app.repeat,
+        shuffle: app.shuffle,
     };
 
     frame.render_widget(widget, progress_area);
