@@ -15,7 +15,7 @@ pub fn render_footer(frame: &mut Frame, area: Rect) {
         // Span::styled(" Seek   ", Style::default().fg(MUTED)),
         Span::styled("[r]", Style::default().fg(ACCENT_LIGHT)),
         Span::styled("    ", Style::default().fg(MUTED)),
-        Span::styled("[s]", Style::default().fg(ACCENT_LIGHT)),
+        Span::styled("[z]", Style::default().fg(ACCENT_LIGHT)),
         Span::styled("    ", Style::default().fg(MUTED)),
         Span::styled("[b]", Style::default().fg(ACCENT_LIGHT)),
         Span::styled("    ", Style::default().fg(MUTED)),
