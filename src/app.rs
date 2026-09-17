@@ -1,29 +1,53 @@
 use crate::{
+    library::Library,
     player::AudioPlayer,
     playlist::{Playlist, RepeatMode},
     track::Track,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppMode {
+    PlayerMode,
+    LibraryMode,
+    PlaylistMode,
+    SearchMode,
+    HelpMode,
+}
 
 pub struct App {
+    pub mode: AppMode,
     pub duration: Duration,
     pub elapsed: Duration,
     pub playing: bool,
     pub repeat: RepeatMode,
     pub shuffle: bool,
     pub current_track: Option<Track>,
+    pub cover_changed: bool,
+    pub library: Library,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(library: Library) -> Self {
         Self {
+            mode: AppMode::PlayerMode,
             duration: Duration::from_secs(0),
             elapsed: Duration::from_secs(0),
             playing: false,
             repeat: RepeatMode::Off,
             shuffle: false,
             current_track: None,
+            cover_changed: false,
+            library,
         }
+    }
+
+    pub fn set_mode(&mut self, mode: AppMode) {
+        self.mode = mode;
+    }
+
+    pub fn is_mode(&mut self, mode: AppMode) -> bool {
+        self.mode == mode
     }
 
     pub fn progress(&self) -> f64 {
@@ -68,7 +92,6 @@ impl App {
         &mut self,
         playlist: &Playlist,
         player: &mut AudioPlayer,
-        last_tick: &mut Instant,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let Some(track) = playlist.current() else {
             return Ok(());
@@ -79,7 +102,6 @@ impl App {
         player.play_file(&path)?;
 
         self.reset();
-        *last_tick = Instant::now();
 
         if let Some(duration) = player.duration() {
             self.duration = duration;
