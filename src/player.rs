@@ -48,10 +48,10 @@ impl AudioPlayer {
     }
 
     pub fn toggle_pause(&self) {
-        if self.player.is_paused() {
-            self.player.play();
+        if self.is_paused() {
+            self.resume();
         } else {
-            self.player.pause();
+            self.pause();
         }
     }
 
