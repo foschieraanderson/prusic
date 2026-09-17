@@ -1,16 +1,21 @@
 mod app;
 mod helpers;
+mod keybindings;
+mod library;
 mod player;
 mod playlist;
 mod track;
 mod ui;
 
-use crate::helpers::{print_help, show_image};
+use crate::app::AppMode;
+use crate::helpers::show_image;
+use crate::keybindings::handle_key;
+use crate::library::Library;
 use crate::player::AudioPlayer;
 use crate::playlist::Playlist;
-use crate::ui::footer::render_footer;
-use crate::ui::player::render_player;
+use crate::ui::{footer::render_footer, library::render_library, player::render_player};
 use app::App;
+
 use std::{
     env, io,
     path::PathBuf,
@@ -18,7 +23,7 @@ use std::{
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -43,11 +48,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Exemplo:");
         eprintln!("  {program} Music/");
 
+        disable_raw_mode()?;
+
         return Ok(());
     };
 
     let music_directory = PathBuf::from(music_directory);
-    let mut relative_path: PathBuf = dirs::home_dir().expect("Não foi possível encontrar a home");
+
+    let mut relative_path = dirs::home_dir().expect("Não foi possível encontrar a home");
+
     relative_path.push(&music_directory);
 
     let mut stdout = io::stdout();
@@ -72,14 +81,16 @@ fn run(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     music_directory: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut app = App::new();
-
     let tick_rate = Duration::from_millis(50);
     let mut last_tick = Instant::now();
 
+    let library = Library::from_directory(&music_directory)?;
+
+    let mut app = App::new(library);
+
     let mut playlist = Playlist::from_directory(&music_directory)?;
 
-    if playlist.len() == 0 {
+    if playlist.is_empty() {
         println!(
             "Nenhum arquivo de áudio encontrado em {}",
             music_directory.display()
@@ -90,9 +101,10 @@ fn run(
 
     let mut player = AudioPlayer::new()?;
 
-    app.play_current_track(&playlist, &mut player, &mut last_tick)?;
+    app.play_current_track(&playlist, &mut player)?;
 
-    let mut cover_changed = true;
+    app.cover_changed = true;
+
     let mut cover_area = Rect::default();
 
     loop {
@@ -100,67 +112,14 @@ fn run(
             cover_area = render(frame, &app);
         })?;
 
-        let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or(Duration::ZERO);
 
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => {
-                        player.stop();
-                        break;
-                    }
-
-                    KeyCode::Char('p') => {
-                        app.playing = !app.playing;
-                        player.toggle_pause();
-                    }
-
-                    // ------------------------------------------------
-                    // Stop
-                    // ------------------------------------------------
-                    // KeyCode::Char('s') => {
-                    //     player.stop();
-                    //     app.playing = false;
-                    // }
-                    KeyCode::Char('n') => {
-                        if playlist.next().is_some() {
-                            app.play_current_track(&playlist, &mut player, &mut last_tick)?;
-
-                            cover_changed = true;
-                        }
-                    }
-
-                    KeyCode::Char('b') => {
-                        if playlist.previous().is_some() {
-                            app.play_current_track(&playlist, &mut player, &mut last_tick)?;
-
-                            cover_changed = true;
-                        }
-                    }
-
-                    KeyCode::Char('z') => {
-                        playlist.toggle_shuffle();
-                        app.shuffle = playlist.shuffle;
-                    }
-
-                    KeyCode::Char('r') => {
-                        playlist.toggle_repeat();
-                        app.repeat = playlist.repeat;
-                    }
-
-                    KeyCode::Char('+') => {
-                        player.increase_volume();
-                    }
-
-                    KeyCode::Char('-') => {
-                        player.decrease_volume();
-                    }
-
-                    KeyCode::Char('h') => {
-                        print_help();
-                    }
-
-                    _ => {}
+                if handle_key(&mut app, &mut player, &mut playlist, key)? {
+                    break;
                 }
             }
         }
@@ -175,24 +134,26 @@ fn run(
 
         if player.has_finished() {
             if playlist.next().is_some() {
-                app.play_current_track(&playlist, &mut player, &mut last_tick)?;
+                app.play_current_track(&playlist, &mut player)?;
 
-                cover_changed = true;
+                app.cover_changed = true;
             } else {
                 app.playing = false;
             }
         }
 
-        if cover_changed {
+        if app.cover_changed {
             if let Some(track) = &app.current_track {
                 if let Some(cover) = &track.cover {
                     show_image(cover, cover_area)?;
                 }
             }
 
-            cover_changed = false;
+            app.cover_changed = false;
         }
     }
+
+    player.stop();
 
     Ok(())
 }
@@ -203,7 +164,15 @@ fn render(frame: &mut Frame, app: &App) -> Rect {
     let [content, footer] =
         Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
 
-    let cover = render_player(frame, content, app);
+    let cover = match app.mode {
+        AppMode::PlayerMode => render_player(frame, content, app),
+        AppMode::LibraryMode => {
+            render_library(frame, content, app);
+            Rect::default()
+        }
+        _ => Rect::default(),
+    };
+
     render_footer(frame, footer);
 
     cover
