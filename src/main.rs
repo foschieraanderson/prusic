@@ -8,7 +8,7 @@ mod track;
 mod ui;
 
 use crate::app::AppMode;
-use crate::helpers::show_image;
+use crate::helpers::{clear_image, show_image};
 use crate::keybindings::handle_key;
 use crate::library::Library;
 use crate::player::AudioPlayer;
@@ -81,7 +81,7 @@ fn run(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     music_directory: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let tick_rate = Duration::from_millis(50);
+    let tick_rate = Duration::from_millis(100);
     let mut last_tick = Instant::now();
 
     let library = Library::from_directory(&music_directory)?;
@@ -105,13 +105,10 @@ fn run(
 
     app.cover_changed = true;
 
-    let mut cover_area = Rect::default();
+    let mut cover_area: Option<Rect> = None;
+    let mut previous_mode = app.mode;
 
     loop {
-        terminal.draw(|frame| {
-            cover_area = render(frame, &app);
-        })?;
-
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
             .unwrap_or(Duration::ZERO);
@@ -123,6 +120,19 @@ fn run(
                 }
             }
         }
+
+        if previous_mode != app.mode {
+            clear_image()?;
+            if app.is_mode(AppMode::LibraryMode) || app.is_mode(AppMode::PlayerMode) {
+                app.cover_changed = true;
+            }
+
+            previous_mode = app.mode;
+        }
+
+        terminal.draw(|frame| {
+            cover_area = render(frame, &app);
+        })?;
 
         if last_tick.elapsed() >= tick_rate {
             let delta = last_tick.elapsed();
@@ -143,9 +153,11 @@ fn run(
         }
 
         if app.cover_changed {
-            if let Some(track) = &app.current_track {
-                if let Some(cover) = &track.cover {
-                    show_image(cover, cover_area)?;
+            if let Some(cover_area) = cover_area {
+                if let Some(track) = &app.current_track {
+                    if let Some(cover) = &track.cover {
+                        show_image(cover, cover_area)?;
+                    }
                 }
             }
 
@@ -153,12 +165,10 @@ fn run(
         }
     }
 
-    player.stop();
-
     Ok(())
 }
 
-fn render(frame: &mut Frame, app: &App) -> Rect {
+fn render(frame: &mut Frame, app: &App) -> Option<Rect> {
     let area = frame.area();
 
     let [content, footer] =
@@ -166,11 +176,8 @@ fn render(frame: &mut Frame, app: &App) -> Rect {
 
     let cover = match app.mode {
         AppMode::PlayerMode => render_player(frame, content, app),
-        AppMode::LibraryMode => {
-            render_library(frame, content, app);
-            Rect::default()
-        }
-        _ => Rect::default(),
+        AppMode::LibraryMode => render_library(frame, content, app),
+        _ => None,
     };
 
     render_footer(frame, footer);
