@@ -5,6 +5,7 @@ use image::{ImageFormat, imageops::FilterType};
 use ratatui::layout::Rect;
 use std::{
     io::{self, Cursor, Write},
+    path::Path,
     time::Duration,
 };
 
@@ -152,4 +153,15 @@ pub fn show_image(data: &[u8], area: Rect) -> io::Result<()> {
     stdout.flush()?;
 
     Ok(())
+}
+
+pub fn is_audio_file(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
+        return false;
+    };
+
+    matches!(
+        extension.to_lowercase().as_str(),
+        "mp3" | "wav" | "flac" | "ogg" | "oga" | "m4a" | "aac"
+    )
 }

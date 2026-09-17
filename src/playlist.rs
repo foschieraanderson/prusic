@@ -1,3 +1,4 @@
+use crate::helpers::is_audio_file;
 use crate::track::Track;
 use rand::seq::SliceRandom;
 use std::{
@@ -200,15 +201,4 @@ impl Playlist {
     pub fn len(&self) -> usize {
         self.tracks.len()
     }
-}
-
-fn is_audio_file(path: &Path) -> bool {
-    let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
-        return false;
-    };
-
-    matches!(
-        extension.to_lowercase().as_str(),
-        "mp3" | "wav" | "flac" | "ogg" | "oga" | "m4a" | "aac"
-    )
 }
