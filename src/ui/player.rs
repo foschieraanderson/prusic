@@ -16,17 +16,20 @@ const MUTED: Color = Color::Rgb(100, 100, 115);
 const TEXT: Color = Color::Rgb(235, 235, 240);
 const BAR: Color = Color::Rgb(55, 55, 65);
 
-pub fn render_player(frame: &mut Frame, area: Rect, app: &App) -> Rect {
-    let [player] = Layout::horizontal([Constraint::Length(56)])
-        .flex(Flex::Center)
-        .areas(area);
+pub fn render_player(frame: &mut Frame, area: Rect, app: &App) -> Option<Rect> {
+    let [_, player, _] = Layout::horizontal([
+        Constraint::Length(1),
+        Constraint::Max(70),
+        Constraint::Length(1),
+    ])
+    .flex(Flex::Center)
+    .areas(area);
 
-    let [cover, title, artist, progress, controls] = Layout::vertical([
-        Constraint::Length(12),
+    let [cover, title, artist, progress] = Layout::vertical([
+        Constraint::Max(15),
         Constraint::Length(1),
         Constraint::Length(1),
-        Constraint::Length(3),
-        Constraint::Length(3),
+        Constraint::Length(1),
     ])
     .flex(Flex::Center)
     .spacing(1)
@@ -38,7 +41,7 @@ pub fn render_player(frame: &mut Frame, area: Rect, app: &App) -> Rect {
     render_progress(frame, progress, app);
     // render_controls(frame, controls, app);
 
-    cover
+    Some(cover)
 }
 
 fn render_cover(frame: &mut Frame, area: Rect, app: &App) {
