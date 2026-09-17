@@ -24,6 +24,17 @@ pub struct Playlist {
 }
 
 impl Playlist {
+    pub fn new() -> Self {
+        Self {
+            tracks: Vec::new(),
+            current: 0,
+            shuffle: false,
+            repeat: RepeatMode::Off,
+            shuffle_queue: Vec::new(),
+            shuffle_history: Vec::new(),
+        }
+    }
+
     pub fn from_directory(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         if !path.exists() {
             return Err(io::Error::new(
@@ -70,6 +81,25 @@ impl Playlist {
             shuffle_history: Vec::new(),
         })
     }
+
+    pub fn add_track(&mut self, track: Track) {
+        self.tracks.push(track);
+
+        if self.shuffle {
+            self.create_shuffle_queue();
+        }
+    }
+
+    // pub fn add_tracks(&mut self, tracks: I)
+    // where
+    //     I: IntoIterator<Item = Track>,
+    // {
+    //     self.tracks.extend(tracks);
+    //
+    //     if self.shuffle {
+    //         self.create_shuffle_queue();
+    //     }
+    // }
 
     pub fn current(&self) -> Option<&Track> {
         self.tracks.get(self.current)
@@ -200,5 +230,12 @@ impl Playlist {
 
     pub fn len(&self) -> usize {
         self.tracks.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        if self.tracks.len() > 0 {
+            return false;
+        }
+        return true;
     }
 }
