@@ -76,6 +76,8 @@ fn jpeg_to_png(data: &[u8]) -> io::Result<Vec<u8>> {
 }
 
 pub fn show_image(data: &[u8], area: Rect) -> io::Result<()> {
+    clear_image()?;
+
     let png = jpeg_to_png(data)?;
 
     let image = image::load_from_memory(&png).map_err(io::Error::other)?;
@@ -149,6 +151,19 @@ pub fn show_image(data: &[u8], area: Rect) -> io::Result<()> {
             std::str::from_utf8(chunk).map_err(io::Error::other)?
         )?;
     }
+
+    stdout.flush()?;
+
+    Ok(())
+}
+
+pub fn clear_image() -> io::Result<()> {
+    let mut stdout = io::stdout();
+
+    // Kitty Graphics Protocol:
+    // a=d -> delete
+    // d=A -> delete all images
+    write!(stdout, "\x1b_Ga=d,d=A\x1b\\")?;
 
     stdout.flush()?;
 
