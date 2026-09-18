@@ -9,43 +9,13 @@ use std::{
     time::Duration,
 };
 
-fn format_duration(duration: Duration) -> String {
+pub fn format_duration(duration: Duration) -> String {
     let seconds = duration.as_secs();
 
     let minutes = seconds / 60;
     let seconds = seconds % 60;
 
     format!("{minutes:02}:{seconds:02}")
-}
-
-pub fn draw_progress(player: &AudioPlayer) {
-    let position = player.position();
-
-    let Some(duration) = player.duration() else {
-        println!("Tempo: {}", format_duration(position));
-        return;
-    };
-
-    let total = duration.as_secs_f64();
-    let current = position.as_secs_f64();
-
-    let percentage = if total > 0.0 {
-        (current / total).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-
-    let width = 40usize;
-    let filled = (percentage * width as f64) as usize;
-    let empty = width - filled;
-
-    println!(
-        "[{}{}] {} / {}",
-        "=".repeat(filled),
-        "-".repeat(empty),
-        format_duration(position),
-        format_duration(duration),
-    );
 }
 
 pub fn print_help() {
