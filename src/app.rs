@@ -30,7 +30,7 @@ pub struct App {
 impl App {
     pub fn new(library: Library) -> Self {
         Self {
-            mode: AppMode::PlayerMode,
+            mode: AppMode::LibraryMode,
             duration: Duration::from_secs(0),
             elapsed: Duration::from_secs(0),
             playing: false,
@@ -46,7 +46,7 @@ impl App {
         self.mode = mode;
     }
 
-    pub fn is_mode(&mut self, mode: AppMode) -> bool {
+    pub fn is_mode(&self, mode: AppMode) -> bool {
         self.mode == mode
     }
 
@@ -98,18 +98,26 @@ impl App {
         };
 
         let path = track.path.clone();
+        let track = track.clone();
+
+        self.elapsed = Duration::ZERO;
+        self.duration = Duration::ZERO;
+        self.playing = false;
 
         player.play_file(&path)?;
-
-        self.reset();
 
         if let Some(duration) = player.duration() {
             self.duration = duration;
         }
 
         self.playing = true;
-        self.current_track = Some(track.clone());
+        self.current_track = Some(track);
+        self.cover_changed = true;
 
         Ok(())
+    }
+
+    pub fn cover_change(&mut self) {
+        self.cover_changed = !self.cover_changed;
     }
 }
