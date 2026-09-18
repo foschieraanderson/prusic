@@ -88,22 +88,22 @@ fn run(
 
     let mut app = App::new(library);
 
-    let mut playlist = Playlist::from_directory(&music_directory)?;
+    let mut playlist = Playlist::new();
 
-    if playlist.is_empty() {
-        println!(
-            "Nenhum arquivo de áudio encontrado em {}",
-            music_directory.display()
-        );
-
-        return Ok(());
-    }
+    // if playlist.is_empty() {
+    //     println!(
+    //         "Nenhum arquivo de áudio encontrado em {}",
+    //         music_directory.display()
+    //     );
+    //
+    //     return Ok(());
+    // }
 
     let mut player = AudioPlayer::new()?;
 
-    app.play_current_track(&playlist, &mut player)?;
-
-    app.cover_changed = true;
+    // app.play_current_track(&playlist, &mut player)?;
+    //
+    // app.cover_changed = true;
 
     let mut cover_area: Option<Rect> = None;
     let mut previous_mode = app.mode;
@@ -131,7 +131,7 @@ fn run(
         }
 
         terminal.draw(|frame| {
-            cover_area = render(frame, &app);
+            cover_area = render(frame, &mut app);
         })?;
 
         if last_tick.elapsed() >= tick_rate {
@@ -145,8 +145,6 @@ fn run(
         if player.has_finished() {
             if playlist.next().is_some() {
                 app.play_current_track(&playlist, &mut player)?;
-
-                app.cover_changed = true;
             } else {
                 app.playing = false;
             }
@@ -157,6 +155,8 @@ fn run(
                 if let Some(track) = &app.current_track {
                     if let Some(cover) = &track.cover {
                         show_image(cover, cover_area)?;
+                    } else {
+                        clear_image()?;
                     }
                 }
             }
@@ -168,7 +168,7 @@ fn run(
     Ok(())
 }
 
-fn render(frame: &mut Frame, app: &App) -> Option<Rect> {
+fn render(frame: &mut Frame, app: &mut App) -> Option<Rect> {
     let area = frame.area();
 
     let [content, footer] =
