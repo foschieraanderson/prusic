@@ -83,6 +83,10 @@ impl Playlist {
     }
 
     pub fn add_track(&mut self, track: Track) {
+        if self.tracks.iter().any(|t| t.path == track.path) {
+            return;
+        }
+
         self.tracks.push(track);
 
         if self.shuffle {
@@ -102,6 +106,9 @@ impl Playlist {
     // }
 
     pub fn current(&self) -> Option<&Track> {
+        if self.tracks.is_empty() {
+            return None;
+        }
         self.tracks.get(self.current)
     }
 
