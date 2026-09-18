@@ -28,7 +28,7 @@ pub fn handle_key(
                 handle_player_keys(app, player, playlist, key)?;
             }
             AppMode::LibraryMode => {
-                handle_library_keys(app, playlist, key);
+                handle_library_keys(app, player, playlist, key);
             }
 
             AppMode::PlaylistMode => {
@@ -92,18 +92,46 @@ fn handle_player_keys(
     Ok(())
 }
 
-fn handle_library_keys(app: &mut App, playlist: &mut Playlist, key: KeyEvent) {
+fn handle_library_keys(
+    app: &mut App,
+    player: &mut AudioPlayer,
+    playlist: &mut Playlist,
+    key: KeyEvent,
+) -> Result<(), Box<dyn std::error::Error>> {
     match key.code {
-        KeyCode::Esc => {}
+        // KeyCode::Char('j') | KeyCode::Down => {}
+        // KeyCode::Char('k') | KeyCode::Up => {}
+        KeyCode::Up => {
+            app.library.select_previous();
+        }
 
-        KeyCode::Char('j') | KeyCode::Down => {}
+        KeyCode::Down => {
+            app.library.select_next();
+        }
 
-        KeyCode::Char('k') | KeyCode::Up => {}
+        KeyCode::Char(' ') => {
+            app.library.toggle_track_selection();
+        }
 
-        KeyCode::Enter => {}
+        KeyCode::Enter => {
+            app.library.toggle_selected();
+        }
+
+        KeyCode::Char('a') => {
+            let was_empty = playlist.is_empty();
+
+            app.library.add_selected_to_playlist(playlist);
+
+            if was_empty && !playlist.is_empty() {
+                app.play_current_track(playlist, player)?;
+                app.set_mode(AppMode::PlayerMode);
+            }
+        }
 
         _ => {}
     }
+
+    Ok(())
 }
 
 fn handle_playlist_keys(app: &mut App, playlist: &mut Playlist, key: KeyEvent) {
