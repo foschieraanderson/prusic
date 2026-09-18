@@ -13,24 +13,38 @@ pub struct Track {
 
 impl Track {
     pub fn new(path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
-        let tag = Tag::read_from_path(&path)?;
+        let tag = Tag::read_from_path(&path).ok();
 
         let title = tag
-            .title()
+            .as_ref()
+            .and_then(|tag| tag.title())
             .filter(|title| !title.trim().is_empty())
             .map(str::to_owned)
             .unwrap_or_else(|| {
-                path.file_name()
+                path.file_stem()
                     .and_then(|name| name.to_str())
                     .unwrap_or("Unknown")
                     .to_string()
             });
 
-        let artist = tag.artist().unwrap_or("Unknown").to_string();
-        let album = tag.album().unwrap_or("Unknown").to_string();
-        let year = tag.year();
+        let artist = tag
+            .as_ref()
+            .and_then(|tag| tag.artist())
+            .unwrap_or("Unknown")
+            .to_string();
 
-        let cover = tag.pictures().next().map(|picture| picture.data.clone());
+        let album = tag
+            .as_ref()
+            .and_then(|tag| tag.album())
+            .unwrap_or("Unknown")
+            .to_string();
+
+        let year = tag.as_ref().and_then(|tag| tag.year());
+
+        let cover = tag
+            .as_ref()
+            .and_then(|tag| tag.pictures().next())
+            .map(|picture| picture.data.clone());
 
         Ok(Self {
             path,
