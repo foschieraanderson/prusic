@@ -1,7 +1,7 @@
 use ratatui::widgets::ListState;
 
-use crate::helpers::is_audio_file;
 use crate::track::Track;
+use crate::{helpers::is_audio_file, playlist::Playlist};
 
 use std::{
     collections::HashSet,
@@ -20,6 +20,7 @@ pub enum LibraryNode {
 
 pub struct Library {
     pub root: LibraryNode,
+    pub state: LibraryState,
 }
 
 pub struct LibraryState {
@@ -31,8 +32,17 @@ pub struct LibraryState {
 impl Library {
     pub fn from_directory(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let root = Self::scan_directory(path)?;
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
 
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            state: LibraryState {
+                expanded: HashSet::new(),
+                selected_tracks: HashSet::new(),
+                list_state,
+            },
+        })
     }
 
     fn scan_directory(path: &Path) -> Result<LibraryNode, Box<dyn std::error::Error>> {
@@ -79,5 +89,160 @@ impl Library {
             name,
             children,
         })
+    }
+
+    pub fn visible_nodes(&self) -> Vec<(&LibraryNode, usize)> {
+        let mut nodes = Vec::new();
+
+        Self::collect_visible(&self.root, &self.state, &mut nodes, 0);
+
+        nodes
+    }
+
+    fn collect_visible<'a>(
+        node: &'a LibraryNode,
+        state: &LibraryState,
+        nodes: &mut Vec<(&'a LibraryNode, usize)>,
+        depth: usize,
+    ) {
+        let LibraryNode::Directory { children, .. } = node else {
+            return;
+        };
+
+        for child in children {
+            nodes.push((child, depth));
+
+            if let LibraryNode::Directory { path, .. } = child {
+                if state.expanded.contains(path) {
+                    Self::collect_visible(child, state, nodes, depth + 1);
+                }
+            }
+        }
+    }
+
+    pub fn select_next(&mut self) {
+        let nodes = self.visible_nodes();
+
+        if nodes.is_empty() {
+            return;
+        }
+
+        let next = match self.state.list_state.selected() {
+            Some(i) => {
+                if i + 1 < nodes.len() {
+                    i + 1
+                } else {
+                    i
+                }
+            }
+            None => 0,
+        };
+
+        self.state.list_state.select(Some(next));
+    }
+
+    pub fn select_previous(&mut self) {
+        let nodes = self.visible_nodes();
+
+        if nodes.is_empty() {
+            return;
+        }
+
+        let previous = match self.state.list_state.selected() {
+            Some(i) => i.saturating_sub(1),
+            None => 0,
+        };
+
+        self.state.list_state.select(Some(previous));
+    }
+
+    pub fn selected_node(&self) -> Option<&LibraryNode> {
+        let index = self.state.list_state.selected()?;
+
+        self.visible_nodes().get(index).map(|(node, _)| *node)
+    }
+
+    pub fn toggle_selected(&mut self) {
+        let Some(index) = self.state.list_state.selected() else {
+            return;
+        };
+
+        let path = {
+            let nodes = self.visible_nodes();
+
+            let Some((node, _)) = nodes.get(index) else {
+                return;
+            };
+
+            let LibraryNode::Directory { path, .. } = node else {
+                return;
+            };
+
+            path.clone()
+        };
+
+        if !self.state.expanded.insert(path.clone()) {
+            self.state.expanded.remove(&path);
+        }
+    }
+
+    pub fn toggle_track_selection(&mut self) {
+        let Some(index) = self.state.list_state.selected() else {
+            return;
+        };
+
+        let path = {
+            let nodes = self.visible_nodes();
+
+            let Some((node, _)) = nodes.get(index) else {
+                return;
+            };
+
+            let LibraryNode::Track(track) = node else {
+                return;
+            };
+
+            track.path.clone()
+        };
+
+        if !self.state.selected_tracks.insert(path.clone()) {
+            self.state.selected_tracks.remove(&path);
+        }
+    }
+
+    pub fn selected_tracks(&self) -> Vec<Track> {
+        let mut tracks = Vec::new();
+
+        Self::collect_selected_tracks(&self.root, &self.state.selected_tracks, &mut tracks);
+
+        tracks
+    }
+
+    fn collect_selected_tracks(
+        node: &LibraryNode,
+        selected: &HashSet<PathBuf>,
+        tracks: &mut Vec<Track>,
+    ) {
+        match node {
+            LibraryNode::Directory { children, .. } => {
+                for child in children {
+                    Self::collect_selected_tracks(child, selected, tracks);
+                }
+            }
+
+            LibraryNode::Track(track) => {
+                if selected.contains(&track.path) {
+                    tracks.push(track.clone());
+                }
+            }
+        }
+    }
+
+    pub fn add_selected_to_playlist(&mut self, playlist: &mut Playlist) {
+        let tracks = self.selected_tracks();
+
+        for track in tracks {
+            playlist.add_track(track);
+        }
     }
 }
