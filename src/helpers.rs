@@ -1,9 +1,10 @@
-use crate::player::AudioPlayer;
+use crate::config::Config;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use crossterm::terminal;
 use image::{ImageFormat, imageops::FilterType};
 use ratatui::layout::Rect;
 use std::{
+    fs,
     io::{self, Cursor, Write},
     path::Path,
     time::Duration,
@@ -149,4 +150,21 @@ pub fn is_audio_file(path: &Path) -> bool {
         extension.to_lowercase().as_str(),
         "mp3" | "wav" | "flac" | "ogg" | "oga" | "m4a" | "aac"
     )
+}
+
+pub fn load_fallback_cover(config: &Config) -> Option<Vec<u8>> {
+    let path = config.player.fallback_cover.as_ref()?;
+
+    match fs::read(path) {
+        Ok(data) => Some(data),
+        Err(error) => {
+            eprintln!(
+                "Não foi possível carregar fallback_cover '{}': {}",
+                path.display(),
+                error
+            );
+
+            None
+        }
+    }
 }
