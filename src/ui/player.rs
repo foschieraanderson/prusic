@@ -1,13 +1,11 @@
-use std::time::Duration;
-
 use crate::{App, helpers::format_duration, playlist::RepeatMode};
 use ratatui::{
     Frame,
     buffer::Buffer,
     layout::{Alignment, Constraint, Flex, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Paragraph, Widget},
 };
 
 const ACCENT: Color = Color::Rgb(150, 110, 255);
@@ -45,21 +43,33 @@ pub fn render_player(frame: &mut Frame, area: Rect, app: &App) -> Option<Rect> {
 }
 
 pub fn render_cover(frame: &mut Frame, area: Rect, app: &App) {
-    if let Some(track) = &app.current_track {
-        if track.cover.is_some() {
-            // A capa será desenhada pelo show_image()
-            frame.render_widget(Paragraph::new(""), area);
-        } else {
-            let icon = Paragraph::new(Line::from(Span::styled(
-                "󰎈",
-                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
-            )))
-            .alignment(Alignment::Center)
-            .block(Block::default());
-
-            frame.render_widget(icon, area);
-        }
+    if !app.has_cover() && !app.has_fallback_cover() {
+        render_cover_fallback(frame, area);
     }
+    frame.render_widget(Paragraph::new(""), area);
+}
+
+fn render_cover_fallback(frame: &mut Frame, area: Rect) {
+    let icon = Paragraph::new(
+        r#"
+                             
+             ######          
+       ############          
+       ########  ##          
+       ##        ##          
+       ##        ##          
+       ##    ######          
+   ######    ######          
+  #######     ####           
+   #####                     
+                             
+        "#,
+    )
+    .style(Style::default().fg(ACCENT))
+    .centered()
+    .alignment(Alignment::Center);
+
+    frame.render_widget(icon, area);
 }
 
 pub fn render_title(frame: &mut Frame, area: Rect, app: &App) {
@@ -75,22 +85,49 @@ pub fn render_title(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 pub fn render_artist(frame: &mut Frame, area: Rect, app: &App) {
-    let year = app
-        .current_track
-        .as_ref()
-        .map_or("Unknown", |track| track.artist.as_str());
-    let text = format!(
-        "{} ({}{})",
-        app.current_track
-            .as_ref()
-            .map_or("Unknown", |track| track.artist.as_str()),
-        app.current_track
-            .as_ref()
-            .map_or("Unknown", |track| track.album.as_str()),
-        year
-    );
+    let Some(track) = &app.current_track else {
+        return;
+    };
+
+    let mut parts = Vec::new();
+
+    if !track.artist.is_empty() && track.artist != "Unknown" {
+        parts.push(track.artist.as_str());
+    }
+
+    if !track.album.is_empty() && track.album != "Unknown" {
+        parts.push(track.album.as_str());
+    }
+
+    if let Some(year) = track.year {
+        parts.push(Box::leak(year.to_string().into_boxed_str()));
+    }
+
+    if parts.is_empty() {
+        return;
+    }
+
+    let text = parts.join(" • ");
+
     let artist = Paragraph::new(Line::from(Span::styled(text, Style::default().fg(MUTED))))
         .alignment(Alignment::Center);
+
+    // let year = app
+    //     .current_track
+    //     .as_ref()
+    //     .map_or("Unknown", |track| track.artist.as_str());
+    // let text = format!(
+    //     "{} ({}{})",
+    //     app.current_track
+    //         .as_ref()
+    //         .map_or("Unknown", |track| track.artist.as_str()),
+    //     app.current_track
+    //         .as_ref()
+    //         .map_or("Unknown", |track| track.album.as_str()),
+    //     year
+    // );
+    // let artist = Paragraph::new(Line::from(Span::styled(text, Style::default().fg(MUTED))))
+    //     .alignment(Alignment::Center);
 
     frame.render_widget(artist, area);
 }
