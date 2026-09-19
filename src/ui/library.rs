@@ -72,26 +72,29 @@ fn render_player(frame: &mut Frame, area: Rect, app: &App) -> Option<Rect> {
 fn render_player_info(frame: &mut Frame, area: Rect, app: &App) {
     let mut lines = Vec::new();
 
-    if app.current_track.is_some() {
-        // Title
-        let title = Line::from(Span::styled(
-            app.current_track
-                .as_ref()
-                .map_or("Unknown", |track| track.title.as_str()),
-            Style::default().fg(TEXT),
-        ));
-        lines.push(title);
+    if let Some(track) = &app.current_track {
+        if !track.title.is_empty() && track.title != "Unknown" {
+            let title = Line::from(Span::styled(
+                app.current_track
+                    .as_ref()
+                    .map_or("Unknown", |track| track.title.as_str()),
+                Style::default().fg(TEXT),
+            ));
+            lines.push(title);
+        }
 
         // Artist
-        let artist = Line::from(Span::styled(
-            app.current_track
-                .as_ref()
-                .map_or("Unknown", |track| track.artist.as_str()),
-            Style::default().fg(TEXT),
-        ));
+        if !track.artist.is_empty() && track.artist != "Unknown" {
+            let artist = Line::from(Span::styled(
+                app.current_track
+                    .as_ref()
+                    .map_or("Unknown", |track| track.artist.as_str()),
+                Style::default().fg(TEXT),
+            ));
 
-        lines.push(artist);
-    }
+            lines.push(artist);
+        }
+    };
 
     // Time/Controls
     let time = format!(
