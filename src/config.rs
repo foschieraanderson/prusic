@@ -1,10 +1,13 @@
 use serde::Deserialize;
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct Config {
-    pub player: PlayerCongig,
+    pub player: PlayerConfig,
     pub spectrum: SpectrumConfig,
     pub appearance: AppearanceConfig,
 }
@@ -12,7 +15,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            player: PlayerCongig::default(),
+            player: PlayerConfig::default(),
             spectrum: SpectrumConfig::default(),
             appearance: AppearanceConfig::default(),
         }
@@ -21,18 +24,20 @@ impl Default for Config {
 
 #[derive(Debug, Deserialize)]
 #[serde(default)]
-pub struct PlayerCongig {
+pub struct PlayerConfig {
     pub volume: f32,
     pub shuffle: bool,
     pub repeat: bool,
+    pub fallback_cover: Option<PathBuf>,
 }
 
-impl Default for PlayerCongig {
+impl Default for PlayerConfig {
     fn default() -> Self {
         Self {
             volume: 0.8,
             shuffle: false,
             repeat: false,
+            fallback_cover: None,
         }
     }
 }
