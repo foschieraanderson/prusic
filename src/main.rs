@@ -1,4 +1,5 @@
 mod app;
+mod config;
 mod helpers;
 mod keybindings;
 mod library;
@@ -8,6 +9,7 @@ mod track;
 mod ui;
 
 use crate::app::AppMode;
+use crate::config::load_config;
 use crate::helpers::{clear_image, show_image};
 use crate::keybindings::handle_key;
 use crate::library::Library;
@@ -84,9 +86,10 @@ fn run(
     let tick_rate = Duration::from_millis(100);
     let mut last_tick = Instant::now();
 
+    let config = load_config()?;
     let library = Library::from_directory(&music_directory)?;
 
-    let mut app = App::new(library);
+    let mut app = App::new(library, config);
 
     let mut playlist = Playlist::new();
 
@@ -155,6 +158,8 @@ fn run(
                 if let Some(track) = &app.current_track {
                     if let Some(cover) = &track.cover {
                         show_image(cover, cover_area)?;
+                    } else if let Some(fallback) = &app.fallback_cover {
+                        show_image(fallback, cover_area)?;
                     } else {
                         clear_image()?;
                     }
