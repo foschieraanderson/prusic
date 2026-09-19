@@ -1,4 +1,6 @@
 use crate::{
+    config::Config,
+    helpers::load_fallback_cover,
     library::Library,
     player::AudioPlayer,
     playlist::{Playlist, RepeatMode},
@@ -17,6 +19,7 @@ pub enum AppMode {
 
 pub struct App {
     pub mode: AppMode,
+    pub config: Config,
     pub duration: Duration,
     pub elapsed: Duration,
     pub playing: bool,
@@ -25,10 +28,13 @@ pub struct App {
     pub current_track: Option<Track>,
     pub cover_changed: bool,
     pub library: Library,
+    pub fallback_cover: Option<Vec<u8>>,
 }
 
 impl App {
-    pub fn new(library: Library) -> Self {
+    pub fn new(library: Library, config: Config) -> Self {
+        let fallback_cover = load_fallback_cover(&config);
+
         Self {
             mode: AppMode::LibraryMode,
             duration: Duration::from_secs(0),
@@ -39,6 +45,8 @@ impl App {
             current_track: None,
             cover_changed: false,
             library,
+            config,
+            fallback_cover,
         }
     }
 
@@ -117,7 +125,14 @@ impl App {
         Ok(())
     }
 
-    pub fn cover_change(&mut self) {
-        self.cover_changed = !self.cover_changed;
+    pub fn has_cover(&self) -> bool {
+        self.current_track
+            .as_ref()
+            .and_then(|track| track.cover.as_ref())
+            .is_some()
+    }
+
+    pub fn has_fallback_cover(&self) -> bool {
+        self.fallback_cover.is_some()
     }
 }
